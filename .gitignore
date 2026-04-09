@@ -3,6 +3,7 @@
 .vscode/
 .env
 .claude/
+.agents/
 CLAUDE.md
 AGENTS.md
 *.swp
