@@ -292,6 +292,6 @@ Hermes Agent 是目前唯一内置学习闭环的 agent —— 它能够从经�
 <a id="license"></a>
 ## 许可证
 
-本仓库采用 [CC BY 4.0](LICENSE) 许可证。
+本仓库采用 [MIT](LICENSE) 许可证。
 
 
