@@ -55,11 +55,13 @@ Hermes Agent 是目前唯一内置学习闭环的 agent —— 它能够从经�
 - [工具与实用程序](#tools--utilities)
   - [部署](#deployment)
 - [集成与桥接](#integrations--bridges)
+- [检测与媒体取证](#detection--media-forensics)
 - [多 Agent 与 Swarm](#multi-agent--swarms)
 - [领域应用](#domain-applications)
 - [分叉与衍生项目](#forks--derivatives)
 - [指南与文档](#guides--documentation)
 - [运维作战手册](#operational-playbooks)
+- [进阶蓝图](#level-up-blueprints)
 - [参与贡献](#contributing)
 - [许可证](#license)
 
@@ -184,6 +186,15 @@ Hermes Agent 是目前唯一内置学习闭环的 agent —— 它能够从经�
 
 <br>
 
+<a id="detection--media-forensics"></a>
+## 检测与媒体取证
+
+> 面向内容真伪判断、音视频检测和媒体取证的 Hermes 相关能力。
+
+- **[beta]** [detect-skill](https://github.com/resemble-ai/detect-skill) by [Resemble AI](https://github.com/resemble-ai) - 面向语音与媒体真伪检测的技能，适合将深度伪造检测或音频取证流程接入 Hermes。
+
+<br>
+
 <a id="multi-agent--swarms"></a>
 ## 多 Agent 与 Swarms
 
@@ -251,6 +262,16 @@ Hermes Agent 是目前唯一内置学习闭环的 agent —— 它能够从经�
 
 ---
 
+<a id="level-up-blueprints"></a>
+## 进阶蓝图
+
+> 面向想要快速搭起完整 Hermes 工作流的组合方案。
+
+- **工作区优先蓝图** —— 用 [hermes-workspace](https://github.com/outsourc-e/hermes-workspace) 作为主交互层，配合 [wondelai/skills](https://github.com/wondelai/skills) 作为通用技能底座，适合个人开发和日常 agent 协作。
+- **编排与运维蓝图** —— 用 [mission-control](https://github.com/builderz-labs/mission-control) 做多 agent 调度和成本追踪，结合 [hindsight](https://github.com/vectorize-io/hindsight) 或自托管记忆后端，适合长期运行和团队场景。
+
+---
+
 <a id="contributing"></a>
 ## 参与贡献
 
@@ -266,5 +287,11 @@ Hermes Agent 是目前唯一内置学习闭环的 agent —— 它能够从经�
 
 提交前请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
+---
+
+<a id="license"></a>
+## 许可证
+
+本仓库采用 [CC BY 4.0](LICENSE) 许可证。
 
 
