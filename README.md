@@ -224,6 +224,7 @@ Hermes Agent 是目前唯一内置学习闭环的 agent —— 它能够从经�
 - **[beta]** [mercury](https://github.com/hxsteric/mercury) by [hxsteric](https://github.com/hxsteric) - 带 WebGL 仪表盘的多链区块链现金流分析器。支持链上取证与流向可视化。
 - **[experimental]** [hermes-research-agent](https://github.com/Aum08Desai/hermes-research-agent) by [Aum08Desai](https://github.com/Aum08Desai) - 自主 LLM 研究 agent。端到端处理文献综述、假设生成和实验设计。
 
+- **[production]** [TWZRD Agent Intel](https://intel.twzrd.xyz) by [twzrd-sol](https://github.com/twzrd-sol) - Solana 上 AI Agent 的信任评分 MCP 服务器。在 x402 微支付前验证 Agent 钱包身份。提供免费 MCP 工具：`score_agent(wallet)` 和 `preflight_check(wallet)`。配置：`{"mcpServers":{"twzrd-agent-intel":{"url":"https://intel.twzrd.xyz/mcp"}}}`
 <br>
 
 <a id="forks--derivatives"></a>
