@@ -125,6 +125,7 @@ Hermes Agent 是目前唯一内置学习闭环的 agent —— 它能够从经�
 ### 插件
 
 - **[beta]** [plur](https://github.com/plur-ai/plur) by [plur-ai](https://github.com/plur-ai) - 采用开放 engram 格式（YAML）的 AI agent 共享记忆层。适合在 Hermes 工作流中实现持久化学习模式。
+- **[production]** [Hermes Tweet](https://github.com/Xquik-dev/hermes-tweet) by [Xquik-dev](https://github.com/Xquik-dev) - Hermes Agent 的 X/Twitter 插件，提供搜索、资料/时间线读取和可选发布/关注动作。读取工具需要 `XQUIK_API_KEY`，动作还需要显式设置 `HERMES_TWEET_ENABLE_ACTIONS=true`。
 - **[experimental]** [hermes-payguard](https://github.com/nativ3ai/hermes-payguard) by [nativ3ai](https://github.com/nativ3ai) - 安全的 USDC 和 x402 支付插件。允许 Hermes 在可配置消费上限和审批流下收付款。
 - **[beta]** [hermes-web-search-plus](https://github.com/robbyczgw-cla/hermes-web-search-plus) by [robbyczgw-cla](https://github.com/robbyczgw-cla) - 多提供商网页搜索，支持在 Serper、Tavily、Exa 等之间智能路由。用更好的结果质量和来源多样性替代内置搜索。
 - **[beta]** [hermes-weather-plugin](https://github.com/FahrenheitResearch/hermes-weather-plugin) by [FahrenheitResearch](https://github.com/FahrenheitResearch) - 专业级天气插件，包含 NWS 模型图像、NEXRAD 雷达和气象计算。
@@ -293,5 +294,4 @@ Hermes Agent 是目前唯一内置学习闭环的 agent —— 它能够从经�
 ## 许可证
 
 本仓库采用 [MIT](LICENSE) 许可证。
-
 
