@@ -108,6 +108,7 @@ Hermes Agent 是目前唯一内置学习闭环的 agent —— 它能够从经�
 
 > 基于 [agentskills.io](https://agentskills.io) 开放标准构建的技能 —— 可在 Hermes 和其他 agent 平台之间兼容使用。
 
+- **[Ivy Tendril](https://github.com/Ivy-Interactive/Ivy-Tendril)** - Open-source agentic software factory with an amazing UI that handles parallel Git worktrees for you, complete with programmatic verifications and fast review loops
 - **[production]** [wondelai/skills](https://github.com/wondelai/skills) by [wondelai](https://github.com/wondelai) - 面向 Claude Code 和 agentskills.io 兼容平台的跨平台 agent 技能。
 - **[production]** [Anthropic-Cybersecurity-Skills](https://github.com/mukul975/Anthropic-Cybersecurity-Skills) by [mukul975](https://github.com/mukul975) - 753+ 个结构化网络安全技能，映射 MITRE ATT&CK。当前最全面的安全技能集合。4k+ stars。
 - **[production]** [chainlink-agent-skills](https://github.com/smartcontractkit/chainlink-agent-skills) by [Chainlink](https://github.com/smartcontractkit) - 基于 agentskills.io 规范的官方 Chainlink agent 技能。支持预言机网络数据、CCIP 和智能合约交互。
