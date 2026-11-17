@@ -82,9 +82,9 @@ def main():
     if not api_key:
         print("错误: 未设置 OPENAI_API_KEY", file=sys.stderr)
         return 2
-    base = os.environ.get("OPENAI_BASE", "https://api.openai.com/v1")
-    model = os.environ.get("OPENAI_MODEL", "gpt-5.1")
-    max_tokens = args.max_output_tokens or int(os.environ.get("OPENAI_MAX_TOKENS", "32768"))
+    base = os.environ.get("OPENAI_BASE") or "https://api.openai.com/v1"
+    model = os.environ.get("OPENAI_MODEL") or "gpt-5.1"
+    max_tokens = args.max_output_tokens or int(os.environ.get("OPENAI_MAX_TOKENS") or "32768")
 
     upstream = read(args.upstream)
     current = read(args.current)

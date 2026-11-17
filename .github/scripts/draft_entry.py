@@ -54,7 +54,7 @@ def call_model(api_key, base, model, system_prompt, user_prompt):
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        "max_tokens": int(os.environ.get("OPENAI_MAX_TOKENS", "8192")),
+        "max_tokens": int(os.environ.get("OPENAI_MAX_TOKENS") or "8192"),
     }
     req = urllib.request.Request(
         base.rstrip("/") + "/chat/completions",
@@ -86,8 +86,8 @@ def main():
     if not api_key:
         print("未设置 OPENAI_API_KEY", file=sys.stderr)
         return 2
-    base = os.environ.get("OPENAI_BASE", "https://api.openai.com/v1")
-    model = os.environ.get("OPENAI_MODEL", "gpt-5.1")
+    base = os.environ.get("OPENAI_BASE") or "https://api.openai.com/v1"
+    model = os.environ.get("OPENAI_MODEL") or "gpt-5.1"
     token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN", "")
 
     try:

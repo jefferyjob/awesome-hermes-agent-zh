@@ -35,6 +35,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           # OPENAI_API_KEY 配置路径见 .github/AUTOMATION.md
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE: ${{ vars.OPENAI_BASE }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          OPENAI_MAX_TOKENS: ${{ vars.OPENAI_MAX_TOKENS }}
           ISSUE: ${{ github.event.issue.number || inputs.number }}
           TITLE: ${{ github.event.issue.title || '' }}
         run: |

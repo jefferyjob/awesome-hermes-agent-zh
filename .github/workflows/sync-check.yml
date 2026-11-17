@@ -135,6 +135,9 @@ jobs:
         env:
           # 配置路径（Secret/Variable 的设置位置与排障）见 .github/AUTOMATION.md
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE: ${{ vars.OPENAI_BASE }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          OPENAI_MAX_TOKENS: ${{ vars.OPENAI_MAX_TOKENS }}
         run: |
           set -euo pipefail
           python3 .github/scripts/run_sync_translation.py \
