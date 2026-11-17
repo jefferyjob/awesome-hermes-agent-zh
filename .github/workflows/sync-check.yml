@@ -178,6 +178,8 @@ jobs:
           echo "$HEAD_SHA" > .github/upstream-sync-ref
           git add -A
           git commit -m "sync: 上游 ${HEAD_SHA:0:7} 翻译同步（AI 自动，已通过结构校验）"
+          # 兜底：运行期间若有人推送了 main，rebase 后再推
+          git pull --rebase origin main
           git push origin main
           COMMIT=$(git rev-parse --short HEAD)
           {
