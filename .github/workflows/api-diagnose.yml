@@ -7,6 +7,10 @@ on:
         description: "可选：额外实测一个模型 ID（发 1 次极小请求）"
         required: false
         default: ""
+      base_override:
+        description: "可选：临时覆盖 API 端点（不改动 Variables）"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -21,7 +25,7 @@ jobs:
       - name: 列出当前 key 可用的模型
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_BASE: ${{ vars.OPENAI_BASE }}
+          OPENAI_BASE: ${{ inputs.base_override || vars.OPENAI_BASE }}
         run: |
           set -euo pipefail
           BASE="${OPENAI_BASE:-https://api.openai.com/v1}"
@@ -36,7 +40,7 @@ jobs:
         if: inputs.test_model != ''
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_BASE: ${{ vars.OPENAI_BASE }}
+          OPENAI_BASE: ${{ inputs.base_override || vars.OPENAI_BASE }}
           TEST_MODEL: ${{ inputs.test_model }}
         run: |
           set -euo pipefail
