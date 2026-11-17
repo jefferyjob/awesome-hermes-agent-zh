@@ -22,20 +22,17 @@ import sys
 
 ENTRY_RE = re.compile(r"^\- \*\*\[(production|beta|experimental)\]\*\*\s*\[[^\]]+\]\(\S+\)(?:\s+by\s+\[[^\]]+\]\(\S+\))?.*\s-\s\S.*")
 GITHUB_URL_RE = re.compile(r"https?://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)")
-# 本仓库保留、上游没有的条目（Hermes Tweet + 本地 issue 收录）
-ALLOWED_EXTRAS = {
-    "Xquik-dev/hermes-tweet",
-    "1090123627/hermes-opencode-quota",
-    "Aident-AI/aident-skill",
-    "Continuum-AI-Corp/OrcaReplay",
-    "Master6688-design/hermes-wechat-image-wait",
-    "f-o-x11/deed-page-skill",
-    "louis030195/hyperconsciousness",
-    "otsoa-dubief/tenure",
-    "rocosen/flashdata-mcp",
-    "worklittle/jobs-mcp",
-    "ybbms777/deepseek-pricing-panel",
-}
+
+
+def load_allowed_extras(path=".github/local-entries.txt"):
+    """本地保留条目白名单：.github/local-entries.txt + 固定的 Hermes Tweet。"""
+    allowed = {"Xquik-dev/hermes-tweet"}
+    try:
+        with open(path, encoding="utf-8") as f:
+            allowed |= {l.strip() for l in f if l.strip()}
+    except FileNotFoundError:
+        pass
+    return allowed
 REQUIRED_STRINGS = ["翻译自", "Hermes Tweet", "jefferyjob/awesome-hermes-agent-zh/issues"]
 
 
@@ -73,7 +70,8 @@ def main():
     if missing:
         problems.append(f"上游条目未覆盖（{len(missing)} 条）: " + ", ".join(missing))
     extras = sorted(cand_repos - up_repos)
-    unexpected = [r for r in extras if r not in ALLOWED_EXTRAS]
+    allowed = load_allowed_extras()
+    unexpected = [r for r in extras if r not in allowed]
     if unexpected:
         problems.append("候选文件多出未知条目（不在上游也不在本地白名单）: " + ", ".join(unexpected))
 

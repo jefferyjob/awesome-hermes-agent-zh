@@ -6,9 +6,10 @@
       --agents <AGENTS.md> --out <输出文件>
 
 环境变量:
-  OPENAI_API_KEY  必填
-  OPENAI_MODEL    可选，默认 gpt-5.1
-  OPENAI_BASE     可选，默认 https://api.openai.com/v1
+  OPENAI_API_KEY      必填
+  OPENAI_MODEL        可选，默认 gpt-5.1
+  OPENAI_BASE         可选，默认 https://api.openai.com/v1（可指向任意 OpenAI 兼容端点，如智谱 https://open.bigmodel.cn/api/paas/v4）
+  OPENAI_MAX_TOKENS   可选，默认 32768
 
 退出码: 0 = 成功生成; 非 0 = 失败（错误信息输出到 stderr）
 """
@@ -25,17 +26,18 @@ def read(path):
         return f.read()
 
 
-def call_model(api_key, base, model, system_prompt, user_prompt, max_output):
+def call_model(api_key, base, model, system_prompt, user_prompt, max_tokens):
+    """兼容 OpenAI /chat/completions 及其兼容端点（智谱 BigModel 等）。"""
     body = {
         "model": model,
-        "input": [
-            {"role": "developer", "content": system_prompt},
+        "messages": [
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        "max_output_tokens": max_output,
+        "max_tokens": max_tokens,
     }
     req = urllib.request.Request(
-        base.rstrip("/") + "/responses",
+        base.rstrip("/") + "/chat/completions",
         data=json.dumps(body).encode("utf-8"),
         headers={
             "Authorization": "Bearer " + api_key,
@@ -43,19 +45,22 @@ def call_model(api_key, base, model, system_prompt, user_prompt, max_output):
         },
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=900) as resp:
-        data = json.loads(resp.read().decode("utf-8"))
-    if data.get("status") == "incomplete":
-        raise RuntimeError(f"模型输出被截断: {data.get('incomplete_details')}")
-    texts = []
-    for item in data.get("output", []):
-        if item.get("type") == "message":
-            for part in item.get("content", []):
-                if part.get("type") in ("output_text", "text"):
-                    texts.append(part.get("text", ""))
-    if not texts:
-        raise RuntimeError(f"模型未返回文本输出: {json.dumps(data)[:500]}")
-    return "".join(texts)
+    try:
+        with urllib.request.urlopen(req, timeout=1800) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", "replace")[:500]
+        raise RuntimeError(f"API 返回 HTTP {e.code}: {detail}") from e
+    try:
+        choice = data["choices"][0]
+    except (KeyError, IndexError):
+        raise RuntimeError(f"API 响应缺少 choices: {json.dumps(data)[:500]}")
+    if choice.get("finish_reason") == "length":
+        raise RuntimeError("模型输出被截断（finish_reason=length），请增大 OPENAI_MAX_TOKENS 或换更大输出上限的模型")
+    content = (choice.get("message") or {}).get("content") or ""
+    if not content.strip():
+        raise RuntimeError(f"模型未返回内容: {json.dumps(data)[:500]}")
+    return content
 
 
 def strip_fences(text):
@@ -70,7 +75,7 @@ def main():
     p.add_argument("--current", required=True)
     p.add_argument("--agents", required=True)
     p.add_argument("--out", required=True)
-    p.add_argument("--max-output-tokens", type=int, default=100000)
+    p.add_argument("--max-output-tokens", type=int, default=None)
     args = p.parse_args()
 
     api_key = os.environ.get("OPENAI_API_KEY")
@@ -79,6 +84,7 @@ def main():
         return 2
     base = os.environ.get("OPENAI_BASE", "https://api.openai.com/v1")
     model = os.environ.get("OPENAI_MODEL", "gpt-5.1")
+    max_tokens = args.max_output_tokens or int(os.environ.get("OPENAI_MAX_TOKENS", "32768"))
 
     upstream = read(args.upstream)
     current = read(args.current)
@@ -111,7 +117,7 @@ def main():
     )
 
     try:
-        text = call_model(api_key, base, model, system_prompt, user_prompt, args.max_output_tokens)
+        text = call_model(api_key, base, model, system_prompt, user_prompt, max_tokens)
     except Exception as e:
         print(f"模型调用失败: {e}", file=sys.stderr)
         return 1

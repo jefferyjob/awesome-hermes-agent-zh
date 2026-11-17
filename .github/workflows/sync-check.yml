@@ -102,9 +102,7 @@ jobs:
 
           ### 处理方式
 
-          OpenAI 自动翻译流水线已启动：翻译通过结构校验后会自动创建**草稿 PR**（描述含 \`Closes 本 issue\` 与 \`Upstream-SHA\`），等待维护者复核合并。
-
-          若流水线失败（本 issue 会收到失败评论），请按 \`AGENTS.md\` 的「上游同步流程」人工同步：保留本地适配项、核对各分区条目数与上游一致（本地仅允许多出白名单条目）。
+          OpenAI 自动翻译流水线已启动：翻译通过结构校验后会**直接合入 main** 并自动关闭本 issue；失败时会在本 issue 评论并转人工处理。
           EOF
           )
 
@@ -162,31 +160,34 @@ jobs:
             --current /tmp/README.old \
             --repo-root . | tee /tmp/validation.md
 
-      - name: 创建草稿 PR
+      - name: 直接合入 main 并关闭 issue
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ needs.check.outputs.upstream_head }}
           ISSUE: ${{ needs.check.outputs.issue_number }}
         run: |
           set -euo pipefail
-          BR="sync/${HEAD_SHA:0:7}"
+          rm -rf upstream-src
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$BR"
+          echo "$HEAD_SHA" > .github/upstream-sync-ref
           git add -A
-          git commit -m "sync: 上游 ${HEAD_SHA:0:7} 翻译同步（OpenAI 自动，已通过结构校验）"
-          git push origin "$BR"
-          PR=$(gh pr create --draft --base main --head "$BR" \
-            --title "sync: 上游 ${HEAD_SHA:0:7} 翻译同步" \
-            --body "$(printf 'Closes #%s\nUpstream-SHA: %s\n\n🤖 由 OpenAI 翻译流水线自动生成，已通过结构校验（条目覆盖/锚点/格式/本地适配项）。等待人工复核。' "$ISSUE" "$HEAD_SHA")")
-          echo "草稿 PR: $PR"
-          gh issue comment "$ISSUE" --body "✅ 自动翻译完成并通过结构校验，草稿 PR：$PR（等待维护者复核合并）
-
-          <details><summary>校验报告</summary>
-
-          $(cat /tmp/validation.md)
-
-          </details>"
+          git commit -m "sync: 上游 ${HEAD_SHA:0:7} 翻译同步（AI 自动，已通过结构校验）"
+          git push origin main
+          COMMIT=$(git rev-parse --short HEAD)
+          {
+            echo "✅ 自动翻译完成、通过结构校验，已直接合入 main（commit ${COMMIT}），上游基线推进至 \`${HEAD_SHA:0:7}\`。"
+            echo
+            echo "<details><summary>校验报告</summary>"
+            echo
+            cat /tmp/validation.md
+            echo
+            echo "</details>"
+            echo
+            echo "> 如对翻译质量有异议，revert 该 commit 即可，基线不会回退、不影响下次同步。"
+          } > /tmp/done.md
+          gh issue close "$ISSUE" --reason completed --comment-file /tmp/done.md
+          echo "已合入 main 并关闭 issue #$ISSUE"
 
       - name: 失败时通知人工处理
         if: failure()

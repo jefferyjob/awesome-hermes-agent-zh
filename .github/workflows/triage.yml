@@ -21,7 +21,7 @@ on:
 permissions:
   issues: write
   pull-requests: write
-  contents: read
+  contents: write
 
 jobs:
   triage-issue:
@@ -64,38 +64,58 @@ jobs:
             if [ "$VERDICT" = "pass" ]; then
               echo
               echo "---"
-              echo "✅ 基础核验通过（存在、未归档、非 fork、有许可证、未重复收录）。已加 \`resource-recommendation\` 标签。"
+              echo "✅ 基础核验通过（存在、未归档、非 fork、有许可证、未重复收录）。已加 \`resource-recommendation\` 标签，正在起草并自动收录。"
             else
               echo
               echo "---"
-              echo "⚠️ 基础核验未完全通过，请推荐者补充说明（如许可证、维护状态），或维护者人工判断是否破例收录。"
+              echo "❌ 自动核验未通过，不收录。如有异议（例如许可证即将补充、收录标准变化），请评论或重开 issue 由维护者人工复核。"
             fi
           } > /tmp/comment.md
 
-          # 核验通过时，用 OpenAI 起草中文收录条目供维护者参考
           if [ "$VERDICT" = "pass" ]; then
             FIRST_REPO="$(grep -Eo 'github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+' /tmp/issue.txt | head -1 | sed 's#github\.com/##')"
-            if [ -n "$FIRST_REPO" ]; then
-              if DRAFT="$(python3 .github/scripts/draft_entry.py --repo "$FIRST_REPO" --issue-title "$TITLE" 2>/tmp/draft_err.log)"; then
+            if [ -n "$FIRST_REPO" ] && python3 .github/scripts/draft_entry.py --repo "$FIRST_REPO" --issue-title "$TITLE" --out /tmp/draft.json 2>/tmp/draft_err.log; then
+              ENTRY="$(python3 -I -c "import json; print(json.load(open('/tmp/draft.json'))['entry'])")"
+              SECTION="$(python3 -I -c "import json; print(json.load(open('/tmp/draft.json'))['section'])")"
+              if python3 .github/scripts/insert_entry.py --anchor "$SECTION" --repo "$FIRST_REPO" --line "$ENTRY"; then
+                git config user.name "github-actions[bot]"
+                git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                git add README.md .github/local-entries.txt
+                git commit -m "docs: 收录 ${FIRST_REPO}（AI 自动，来自 issue #${ISSUE}）"
+                git push origin main
+                COMMIT=$(git rev-parse --short HEAD)
                 {
                   echo
-                  echo "#### 📝 建议条目草稿（模型生成，需人工确认后收录）"
+                  echo "---"
+                  echo "### ✅ 已自动收录"
                   echo
-                  echo "\`$DRAFT\`"
+                  echo "- 分区：\`${SECTION}\`"
+                  echo "- 条目："
+                  echo "  \`\`\`"
+                  echo "  ${ENTRY}"
+                  echo "  \`\`\`"
+                  echo "- commit：${COMMIT}（如对分类/描述/标签有异议，直接修改该行或 revert 即可）"
                 } >> /tmp/comment.md
-              else
-                echo "::warning::条目起草失败: $(tail -1 /tmp/draft_err.log)"
+                gh issue comment "$ISSUE" --body-file /tmp/comment.md
+                gh issue close "$ISSUE" --reason completed
+                exit 0
               fi
             fi
-          fi
-
-          gh issue comment "$ISSUE" --body-file /tmp/comment.md
-
-          if [ "$VERDICT" = "pass" ]; then
+            # 起草或插入失败：转人工
+            {
+              echo
+              echo "---"
+              echo "⚠️ AI 起草或插入收录条目失败（$(tail -1 /tmp/draft_err.log 2>/dev/null || echo '未知原因')），请维护者人工收录。"
+            } >> /tmp/comment.md
+            gh issue comment "$ISSUE" --body-file /tmp/comment.md
             gh issue edit "$ISSUE" --add-label "resource-recommendation,triage:pass"
-          else
-            gh issue edit "$ISSUE" --add-label "triage:fail"
+            exit 0
           fi
+
+          # 不通过：附理由自动关闭
+          gh issue comment "$ISSUE" --body-file /tmp/comment.md
+          gh issue edit "$ISSUE" --add-label "triage:fail"
+          gh issue close "$ISSUE" --reason "not planned" || true
 
   lint-pr:
     if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.kind == 'pr')
