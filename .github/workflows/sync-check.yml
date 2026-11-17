@@ -193,7 +193,8 @@ jobs:
             echo
             echo "> 如对翻译质量有异议，revert 该 commit 即可，基线不会回退、不影响下次同步。"
           } > /tmp/done.md
-          gh issue close "$ISSUE" --reason completed --comment-file /tmp/done.md
+          gh issue comment "$ISSUE" --body-file /tmp/done.md
+          gh issue close "$ISSUE" --reason completed
           echo "已合入 main 并关闭 issue #$ISSUE"
 
       - name: 失败时通知人工处理
