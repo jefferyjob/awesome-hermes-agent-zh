@@ -23,11 +23,6 @@ permissions:
   pull-requests: write
   contents: read
 
-env:
-  # 核验通过后是否自动把资源推荐 issue 分配给 Copilot coding agent 起草收录 PR
-  # （需要仓库已启用 Copilot coding agent；改为 "false" 可关闭）
-  AUTO_ASSIGN_COPILOT: "true"
-
 jobs:
   triage-issue:
     if: github.event_name == 'issues' || (github.event_name == 'workflow_dispatch' && inputs.kind == 'issue')
@@ -35,19 +30,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 核验推荐资源
+      - name: 核验推荐资源并起草条目
         env:
           GH_TOKEN: ${{ github.token }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ISSUE: ${{ github.event.issue.number || inputs.number }}
-          AUTO_ASSIGN: ${{ env.AUTO_ASSIGN_COPILOT }}
+          TITLE: ${{ github.event.issue.title || '' }}
         run: |
           set -euo pipefail
           gh label create resource-recommendation --color 0E8A16 --description "资源推荐" 2>/dev/null || true
           gh label create "triage:pass" --color 0E8A16 --description "自动核验通过" 2>/dev/null || true
           gh label create "triage:fail" --color D93F0B --description "自动核验未通过" 2>/dev/null || true
 
-          TITLE_LABELS="$(gh issue view "$ISSUE" --json labels --jq '[.labels[].name] | join(" ")')"
-          if [[ "$TITLE_LABELS" == *"sync"* ]]; then
+          LABELS="$(gh issue view "$ISSUE" --json labels --jq '[.labels[].name] | join(" ")')"
+          if [[ "$LABELS" == *"sync"* ]]; then
             echo "同步任务 issue，跳过核验"
             exit 0
           fi
@@ -67,21 +63,35 @@ jobs:
             if [ "$VERDICT" = "pass" ]; then
               echo
               echo "---"
-              echo "✅ 基础核验通过（存在、未归档、非 fork、有许可证、未重复收录）。已加 \`resource-recommendation\` 标签，等待维护者审核收录；成熟度与分类以维护者判定为准。"
+              echo "✅ 基础核验通过（存在、未归档、非 fork、有许可证、未重复收录）。已加 \`resource-recommendation\` 标签。"
             else
               echo
               echo "---"
               echo "⚠️ 基础核验未完全通过，请推荐者补充说明（如许可证、维护状态），或维护者人工判断是否破例收录。"
             fi
           } > /tmp/comment.md
+
+          # 核验通过时，用 OpenAI 起草中文收录条目供维护者参考
+          if [ "$VERDICT" = "pass" ]; then
+            FIRST_REPO="$(grep -Eo 'github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+' /tmp/issue.txt | head -1 | sed 's#github\.com/##')"
+            if [ -n "$FIRST_REPO" ]; then
+              if DRAFT="$(python3 .github/scripts/draft_entry.py --repo "$FIRST_REPO" --issue-title "$TITLE" 2>/tmp/draft_err.log)"; then
+                {
+                  echo
+                  echo "#### 📝 建议条目草稿（模型生成，需人工确认后收录）"
+                  echo
+                  echo "\`$DRAFT\`"
+                } >> /tmp/comment.md
+              else
+                echo "::warning::条目起草失败: $(tail -1 /tmp/draft_err.log)"
+              fi
+            fi
+          fi
+
           gh issue comment "$ISSUE" --body-file /tmp/comment.md
 
           if [ "$VERDICT" = "pass" ]; then
             gh issue edit "$ISSUE" --add-label "resource-recommendation,triage:pass"
-            if [ "$AUTO_ASSIGN" = "true" ]; then
-              gh issue edit "$ISSUE" --add-assignee copilot || \
-                echo "::warning::无法分配 Copilot coding agent（请确认 Settings → Copilot 已启用且套餐支持），issue 已保留供人工处理"
-            fi
           else
             gh issue edit "$ISSUE" --add-label "triage:fail"
           fi

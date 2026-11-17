@@ -565,3 +565,13 @@ Hermes Agent 是由 Nous Research 维护的开源 agent。Awesome Hermes Agent �
 本列表遵循 [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/)（CC BY 4.0）许可证。你可以出于任何目的自由分享和改编这些内容，但需要给出适当的署名。
 
 列表中收录的所有资源各自拥有独立的许可证条款。
+
+---
+
+## 从这个仓库到可运转的 Agent OS
+
+来自 [nyk.dev](https://www.nyk.dev) 的低调商业化服务 —— 同一位运营者，范围固定：
+
+- 免费清单：https://www.nyk.dev/resources/agent-os-checklist?utm_source=github&utm_medium=readme&utm_campaign=oss_proof&utm_content=awesome-hermes-agent
+- 自助 Production Agent OS Kit（€149 创始价）：https://www.nyk.dev/go/agent-os-kit?utm_source=github&utm_medium=readme&utm_campaign=oss_proof&utm_content=awesome-hermes-agent
+- 实操服务包：https://www.nyk.dev/consulting?utm_source=github&utm_medium=readme&utm_campaign=oss_proof&utm_content=awesome-hermes-agent#agent-os

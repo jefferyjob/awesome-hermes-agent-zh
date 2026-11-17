@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   issues: write
+  pull-requests: write
 
 concurrency:
   group: upstream-sync-check
@@ -20,6 +21,10 @@ env:
 jobs:
   check:
     runs-on: ubuntu-latest
+    outputs:
+      needs_sync: ${{ steps.check.outputs.needs_sync }}
+      upstream_head: ${{ steps.check.outputs.upstream_head }}
+      issue_number: ${{ steps.create_issue.outputs.issue_number }}
     steps:
       - uses: actions/checkout@v4
 
@@ -72,7 +77,8 @@ jobs:
           fi
           echo "needs_sync=true" >> "$GITHUB_OUTPUT"
 
-      - name: 创建同步任务 issue 并分配给 Copilot
+      - name: 创建同步任务 issue
+        id: create_issue
         if: steps.check.outputs.needs_sync == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -94,24 +100,98 @@ jobs:
           ### 上游最近提交
           ${LOG}
 
-          ### 任务
+          ### 处理方式
 
-          请 @copilot 按 \`AGENTS.md\` 的「上游同步流程」执行：
+          OpenAI 自动翻译流水线已启动：翻译通过结构校验后会自动创建**草稿 PR**（描述含 \`Closes 本 issue\` 与 \`Upstream-SHA\`），等待维护者复核合并。
 
-          1. 获取上游 ${UPSTREAM_REPO}@\`${HEAD_SHA:0:7}\` 的 README.md 及其他关注文件，与本仓库中文版逐节比对
-          2. 翻译并合入所有差异，保留 AGENTS.md 列出的本地适配项
-          3. 核对各分区条目数与上游一致（本地仅允许多出 Hermes Tweet 一条）
-          4. 新建分支 \`sync/${HEAD_SHA:0:7}\`，开启**草稿 PR**
-          5. PR 描述必须包含 \`Closes #<本 issue 编号>\` 和 \`Upstream-SHA: ${HEAD_SHA}\`
-
-          > 维护者复核合并 PR 后，合并工作流会自动推进同步基线。
+          若流水线失败（本 issue 会收到失败评论），请按 \`AGENTS.md\` 的「上游同步流程」人工同步：保留本地适配项、核对各分区条目数与上游一致（本地仅允许多出白名单条目）。
           EOF
           )
 
           URL=$(gh issue create --title "上游有更新，待同步至 ${HEAD_SHA:0:7}" --label sync --body "$BODY")
           NUM="${URL##*/}"
+          echo "issue_number=${NUM}" >> "$GITHUB_OUTPUT"
           echo "已创建同步 issue #$NUM: $URL"
 
-          if ! gh issue edit "$NUM" --add-assignee copilot; then
-            echo "::warning::无法分配 Copilot coding agent（请检查仓库 Settings → Copilot 是否启用，以及订阅套餐是否支持），issue 已保留供人工处理"
-          fi
+  translate:
+    needs: check
+    if: needs.check.outputs.needs_sync == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 拉取上游源文件
+        uses: actions/checkout@v4
+        with:
+          repository: 0xNyk/awesome-hermes-agent
+          ref: ${{ needs.check.outputs.upstream_head }}
+          path: upstream-src
+
+      - name: 生成旧版快照
+        run: git show HEAD:README.md > /tmp/README.old
+
+      - name: OpenAI 翻译
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/run_sync_translation.py \
+            --upstream upstream-src/README.md \
+            --current README.md \
+            --agents AGENTS.md \
+            --out /tmp/README.new
+          cp /tmp/README.new README.md
+
+          # 复制新引用且本地缺失的图片
+          for img in $(grep -oE 'assets/[^") ]+' README.md | sort -u); do
+            if [ ! -f "$img" ]; then
+              mkdir -p "$(dirname "$img")"
+              cp "upstream-src/$img" "$img" && echo "已复制图片 $img" \
+                || echo "::warning::缺失图片 $img（上游源中也不存在）"
+            fi
+          done
+
+      - name: 结构校验（质量闸门）
+        run: |
+          set -o pipefail
+          python3 .github/scripts/validate_sync.py \
+            --upstream upstream-src/README.md \
+            --candidate README.md \
+            --current /tmp/README.old \
+            --repo-root . | tee /tmp/validation.md
+
+      - name: 创建草稿 PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ needs.check.outputs.upstream_head }}
+          ISSUE: ${{ needs.check.outputs.issue_number }}
+        run: |
+          set -euo pipefail
+          BR="sync/${HEAD_SHA:0:7}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BR"
+          git add -A
+          git commit -m "sync: 上游 ${HEAD_SHA:0:7} 翻译同步（OpenAI 自动，已通过结构校验）"
+          git push origin "$BR"
+          PR=$(gh pr create --draft --base main --head "$BR" \
+            --title "sync: 上游 ${HEAD_SHA:0:7} 翻译同步" \
+            --body "$(printf 'Closes #%s\nUpstream-SHA: %s\n\n🤖 由 OpenAI 翻译流水线自动生成，已通过结构校验（条目覆盖/锚点/格式/本地适配项）。等待人工复核。' "$ISSUE" "$HEAD_SHA")")
+          echo "草稿 PR: $PR"
+          gh issue comment "$ISSUE" --body "✅ 自动翻译完成并通过结构校验，草稿 PR：$PR（等待维护者复核合并）
+
+          <details><summary>校验报告</summary>
+
+          $(cat /tmp/validation.md)
+
+          </details>"
+
+      - name: 失败时通知人工处理
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ needs.check.outputs.issue_number }}
+        run: |
+          gh issue comment "${ISSUE:-}" --body "⚠️ 自动翻译或校验失败，请按 \`AGENTS.md\` 的「上游同步流程」人工同步本仓库。" \
+            || echo "::warning::翻译失败且未能评论 issue"

@@ -14,7 +14,7 @@ import urllib.request
 
 TOKEN = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN", "")
 ENTRY_RE = re.compile(
-    r"^\- \*\*\[(production|beta|experimental)\]\*\*\s*\[[^\]]+\]\(\S+\) by \[[^\]]+\]\(\S+\) - \S.*"
+    r"^\- \*\*\[(production|beta|experimental)\]\*\*\s*\[[^\]]+\]\(\S+\)(?:\s+by\s+\[[^\]]+\]\(\S+\))?.*\s-\s\S.*"
 )
 URL_RE = re.compile(r"\(https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)(?:/[^)]*)?\)")
 ALLOWED_FILES = {"README.md", "assets/"}
