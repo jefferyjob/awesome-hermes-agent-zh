@@ -1,0 +1,117 @@
+name: 上游同步检查
+
+on:
+  schedule:
+    - cron: "23 3 * * *" # 每日一次（GitHub 会在仓库 60 天无活动后停用定时任务，届时手动 workflow_dispatch 一次即可恢复）
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: upstream-sync-check
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_REPO: 0xNyk/awesome-hermes-agent
+  WATCH_FILES: "^README\\.md$|^CONTRIBUTING\\.md$|^CHANGELOG\\.md$|^LICENSE$"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 比对上游更新
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          LAST="$(cat .github/upstream-sync-ref 2>/dev/null || echo '')"
+          HEAD_SHA="$(gh api "repos/${UPSTREAM_REPO}/commits/main" --jq .sha)"
+          echo "upstream_head=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
+
+          ensure_git_user() {
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          }
+
+          record_baseline() {
+            echo "$HEAD_SHA" > .github/upstream-sync-ref
+            ensure_git_user
+            git add .github/upstream-sync-ref
+            git commit -m "chore: 推进上游基线 ${HEAD_SHA:0:7} ($1)"
+            git push
+          }
+
+          if [ -z "$LAST" ]; then
+            record_baseline "首次运行记录基线"
+            exit 0
+          fi
+
+          if [ "$LAST" = "$HEAD_SHA" ]; then
+            echo "上游无更新（${HEAD_SHA:0:7}）"
+            exit 0
+          fi
+
+          gh api "repos/${UPSTREAM_REPO}/compare/${LAST}...${HEAD_SHA}" --jq '.files[].filename' > changed.txt
+          echo "上游变更文件："
+          cat changed.txt
+
+          if ! grep -Eq "$WATCH_FILES" changed.txt; then
+            record_baseline "关注文件无变化"
+            exit 0
+          fi
+
+          OPEN_COUNT=$(gh issue list --label sync --state open --limit 1 --json number --jq 'length')
+          if [ "$OPEN_COUNT" != "0" ]; then
+            echo "已存在待同步 issue，跳过创建"
+            exit 0
+          fi
+          echo "needs_sync=true" >> "$GITHUB_OUTPUT"
+
+      - name: 创建同步任务 issue 并分配给 Copilot
+        if: steps.check.outputs.needs_sync == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ steps.check.outputs.upstream_head }}
+        run: |
+          set -euo pipefail
+          gh label create sync --color 1D76DB --description "上游同步任务" 2>/dev/null || true
+
+          LOG=$(gh api "repos/${UPSTREAM_REPO}/commits?sha=main&per_page=15" \
+            --jq '.[] | "- \(.sha[0:7]) \(.commit.message | split("\n")[0])"')
+
+          BODY=$(cat <<EOF
+          ## 上游更新检测
+
+          - 上游仓库：${UPSTREAM_REPO}
+          - 目标 SHA：\`${HEAD_SHA}\`
+          - 关注文件（README / CONTRIBUTING / CHANGELOG / LICENSE）发生变化
+
+          ### 上游最近提交
+          ${LOG}
+
+          ### 任务
+
+          请 @copilot 按 \`AGENTS.md\` 的「上游同步流程」执行：
+
+          1. 获取上游 ${UPSTREAM_REPO}@\`${HEAD_SHA:0:7}\` 的 README.md 及其他关注文件，与本仓库中文版逐节比对
+          2. 翻译并合入所有差异，保留 AGENTS.md 列出的本地适配项
+          3. 核对各分区条目数与上游一致（本地仅允许多出 Hermes Tweet 一条）
+          4. 新建分支 \`sync/${HEAD_SHA:0:7}\`，开启**草稿 PR**
+          5. PR 描述必须包含 \`Closes #<本 issue 编号>\` 和 \`Upstream-SHA: ${HEAD_SHA}\`
+
+          > 维护者复核合并 PR 后，合并工作流会自动推进同步基线。
+          EOF
+          )
+
+          URL=$(gh issue create --title "上游有更新，待同步至 ${HEAD_SHA:0:7}" --label sync --body "$BODY")
+          NUM="${URL##*/}"
+          echo "已创建同步 issue #$NUM: $URL"
+
+          if ! gh issue edit "$NUM" --add-assignee copilot; then
+            echo "::warning::无法分配 Copilot coding agent（请检查仓库 Settings → Copilot 是否启用，以及订阅套餐是否支持），issue 已保留供人工处理"
+          fi

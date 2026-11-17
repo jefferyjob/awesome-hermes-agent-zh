@@ -1,0 +1,125 @@
+name: 自动核验 issue 与 PR
+
+on:
+  issues:
+    types: [opened, reopened]
+  pull_request:
+    types: [opened, reopened]
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: "核验对象类型"
+        required: true
+        default: "issue"
+        type: choice
+        options: [issue, pr]
+      number:
+        description: "issue / PR 编号"
+        required: true
+        default: ""
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+env:
+  # 核验通过后是否自动把资源推荐 issue 分配给 Copilot coding agent 起草收录 PR
+  # （需要仓库已启用 Copilot coding agent；改为 "false" 可关闭）
+  AUTO_ASSIGN_COPILOT: "true"
+
+jobs:
+  triage-issue:
+    if: github.event_name == 'issues' || (github.event_name == 'workflow_dispatch' && inputs.kind == 'issue')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 核验推荐资源
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number || inputs.number }}
+          AUTO_ASSIGN: ${{ env.AUTO_ASSIGN_COPILOT }}
+        run: |
+          set -euo pipefail
+          gh label create resource-recommendation --color 0E8A16 --description "资源推荐" 2>/dev/null || true
+          gh label create "triage:pass" --color 0E8A16 --description "自动核验通过" 2>/dev/null || true
+          gh label create "triage:fail" --color D93F0B --description "自动核验未通过" 2>/dev/null || true
+
+          TITLE_LABELS="$(gh issue view "$ISSUE" --json labels --jq '[.labels[].name] | join(" ")')"
+          if [[ "$TITLE_LABELS" == *"sync"* ]]; then
+            echo "同步任务 issue，跳过核验"
+            exit 0
+          fi
+
+          gh issue view "$ISSUE" --json title,body --jq '"\(.title)\n\n\(.body)"' > /tmp/issue.txt
+          if ! python3 .github/scripts/verify_resources.py /tmp/issue.txt README.md > /tmp/report.md; then
+            VERDICT="fail"
+          else
+            VERDICT="pass"
+          fi
+          echo "核验结果: $VERDICT"
+
+          {
+            echo "### 🤖 自动核验报告"
+            echo
+            cat /tmp/report.md
+            if [ "$VERDICT" = "pass" ]; then
+              echo
+              echo "---"
+              echo "✅ 基础核验通过（存在、未归档、非 fork、有许可证、未重复收录）。已加 \`resource-recommendation\` 标签，等待维护者审核收录；成熟度与分类以维护者判定为准。"
+            else
+              echo
+              echo "---"
+              echo "⚠️ 基础核验未完全通过，请推荐者补充说明（如许可证、维护状态），或维护者人工判断是否破例收录。"
+            fi
+          } > /tmp/comment.md
+          gh issue comment "$ISSUE" --body-file /tmp/comment.md
+
+          if [ "$VERDICT" = "pass" ]; then
+            gh issue edit "$ISSUE" --add-label "resource-recommendation,triage:pass"
+            if [ "$AUTO_ASSIGN" = "true" ]; then
+              gh issue edit "$ISSUE" --add-assignee copilot || \
+                echo "::warning::无法分配 Copilot coding agent（请确认 Settings → Copilot 已启用且套餐支持），issue 已保留供人工处理"
+            fi
+          else
+            gh issue edit "$ISSUE" --add-label "triage:fail"
+          fi
+
+  lint-pr:
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.kind == 'pr')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 检查 PR 条目格式与新增仓库
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number || inputs.number }}
+        run: |
+          set -euo pipefail
+          gh label create "format:ok" --color 0E8A16 --description "PR 格式核验通过" 2>/dev/null || true
+          gh label create "format:issues" --color D93F0B --description "PR 格式核验发现问题" 2>/dev/null || true
+
+          FILES="$(gh pr view "$PR" --json files --jq '.files[].path' | tr '\n' ' ')"
+          echo "变更文件: $FILES"
+
+          gh pr diff "$PR" > /tmp/pr.diff
+          if python3 .github/scripts/lint_pr_entries.py /tmp/pr.diff README.md "$FILES" > /tmp/report.md; then
+            VERDICT="ok"
+          else
+            VERDICT="issues"
+          fi
+
+          {
+            echo "### 🤖 PR 自动核验"
+            echo
+            cat /tmp/report.md
+          } > /tmp/comment.md
+          gh pr comment "$PR" --body-file /tmp/comment.md
+
+          if [ "$VERDICT" = "ok" ]; then
+            gh pr edit "$PR" --add-label "format:ok"
+          else
+            gh pr edit "$PR" --add-label "format:issues"
+          fi

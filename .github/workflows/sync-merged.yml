@@ -1,0 +1,60 @@
+name: 同步合并后推进基线
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+
+jobs:
+  record:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 记录上游同步点
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          PR="${{ github.event.pull_request.number }}"
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          LABELS="$(gh pr view "$PR" --json labels --jq '.labels[].name' | tr '\n' ' ')"
+          echo "分支: $BRANCH  标签: $LABELS"
+
+          case "$BRANCH" in
+            sync/*) ;;
+            *)
+              if [[ "$LABELS" != *"sync"* ]]; then
+                echo "非同步 PR，跳过"
+                exit 0
+              fi
+              ;;
+          esac
+
+          PR_BODY="$(gh pr view "$PR" --json body --jq .body)"
+          SHA="$(printf '%s' "$PR_BODY" | grep -Eo 'Upstream-SHA: *[0-9a-f]{40}' | head -1 | sed 's/.*: *//')"
+
+          # 回退：从关联的同步 issue 正文中找「目标 SHA」
+          if [ -z "${SHA:-}" ]; then
+            NUM="$(printf '%s' "$PR_BODY" | grep -Eo '#[0-9]+' | head -1 | tr -d '#')"
+            if [ -n "$NUM" ]; then
+              SHA="$(gh issue view "$NUM" --json body --jq .body \
+                | grep -Eo '目标 SHA：?`?[0-9a-f]{40}' | grep -Eo '[0-9a-f]{40}' | head -1 || true)"
+            fi
+          fi
+
+          if [ -z "${SHA:-}" ]; then
+            echo "::warning::PR 与关联 issue 中都未找到 Upstream-SHA，请人工更新 .github/upstream-sync-ref"
+            exit 0
+          fi
+
+          echo "$SHA" > .github/upstream-sync-ref
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/upstream-sync-ref
+          git commit -m "chore: 同步完成，推进上游基线 ${SHA:0:7}"
+          git push
+          echo "基线已更新为 ${SHA}"
