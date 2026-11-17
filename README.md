@@ -203,6 +203,7 @@ Hermes Agent 是由 Nous Research 维护的开源 agent。Awesome Hermes Agent �
 - **[beta]** [alter](https://github.com/alter-persona/alter) by [alter-persona](https://github.com/alter-persona) - 用你自己的文字构建数字人设，让 agent 用你的语气起草，而不是通用语气。Apache-2.0。
 - **[beta]** [shopify-app-review-brief](https://github.com/alfredtech2026/shopify-app-review-brief) by [alfredtech2026](https://github.com/alfredtech2026) - 隐私优先的 Shopify 应用评审分诊：产出运维者可审计、经来源核查的工作表，而不是黑盒评分。
 - **[experimental]** [schedulala-agent](https://github.com/schedulala/schedulala-agent) by [schedulala](https://github.com/schedulala) - 从 agent 向 12 个平台排期并发布社交帖子。它持有所发布每个平台的凭据，因此请审慎限定其 token 范围。
+- **[experimental]** [deed-page-skill](https://github.com/f-o-x11/deed-page-skill) by [f-o-x11](https://github.com/f-o-x11) - agentskills.io 格式的 `SKILL.md`：Hermes 生成报告、看板或小型静态站点后，用一条 `curl -T` 即可发布到 `https://<slug>.deed.page/` 公开网址；首次发布返回一个 owner token，用于后续更新或删除该站点。免费档无需注册、无需 API key。MIT。
 
 <a id="agentskillsio-ecosystem"></a>
 ### agentskills.io 生态
@@ -238,6 +239,7 @@ Hermes Agent 是由 Nous Research 维护的开源 agent。Awesome Hermes Agent �
 - **[beta]** [arelay-skills](https://github.com/mmmikael/arelay-skills) by [mmmikael](https://github.com/mmmikael) - 通过 [Agent Relay](https://arelay.app) 递送报告、Markdown、HTML、图像和 PDF，支持可选端到端加密。兼容托管或自托管实例。MIT。
 - **[beta]** [tiny.place](https://github.com/tinyhumansai/tiny.place) by [TinyHumans](https://github.com/tinyhumansai) - 以便携技能形式交付的 agent 社交网络：认领 @handle 身份、在开放目录中被发现、通过 Signal 协议端到端加密与同伴通信，并通过 x402 以 USDC/SOL 交易。一个 SKILL.md 即可运行于 Hermes、OpenClaw 和任何兼容 agentskills.io 的宿主。GPL-3.0。
 - **[beta]** [plasma-wiki](https://github.com/plasma-ai/wiki) by [plasma-ai](https://github.com/plasma-ai) - 用于分层 Markdown 知识库的便携技能和 Python CLI —— 通过 `wiki map`、`wiki search` 和 `wiki read` 进行创建、索引、搜索、读取和 lint。将项目知识保存在 Git 管理的纯 Markdown 中，索引维护是确定性的，无需托管记忆服务或向量数据库。Apache-2.0。
+- **[experimental]** [flashdata-mcp](https://github.com/rocosen/flashdata-mcp) by [rocosen](https://github.com/rocosen) - 15 个任务 SKILL.md 加 MIT 许可的 MCP/CLI 客户端，覆盖 Google 网页/新闻/图片/购物/视频/地点搜索与 YouTube 搜索、元数据、已有转录、许可标签、频道等；并附带专门的 [Hermes 插件](https://github.com/rocosen/flashdata-mcp/tree/main/plugins/hermes)。数据请求需要 FlashData 账号、API key 与付费 Credits。
 
 <a id="plugins"></a>
 ### 插件
@@ -295,6 +297,8 @@ Hermes Agent 是由 Nous Research 维护的开源 agent。Awesome Hermes Agent �
 - **[beta]** [cronwatch](https://github.com/nicokickcpython/cronwatch) by [nicokickcpython](https://github.com/nicokickcpython) - cron 健康钩子，在任何计划任务失败时告警，无需再起一个 cron 去盯着第一个。
 - **[experimental]** [hermes-gondola-provider](https://github.com/Gondola-Market/hermes-gondola-provider) by [Gondola Market](https://github.com/Gondola-Market) - 将 Gondola 作为原生模型 provider：通过 provider 接口接入的 USDC 结算模型市场。
 - **[beta]** [Hermes AI Usage Monitor](https://github.com/masterlf/hermes-ai-usage) by [masterlf](https://github.com/masterlf) - 面向 Hermes Desktop 和 Web 仪表盘的只读 provider 配额与按 profile token 遥测。不读取提示词或响应内容。Apache-2.0。
+- **[experimental]** [hermes-wechat-image-wait](https://github.com/Master6688-design/hermes-wechat-image-wait) by [Master6688-design](https://github.com/Master6688-design) - 图文合发插件：微信无法把图片和文字作为一条消息发出，Hermes 的微信接口一收到图就交给 AI。本插件让图片等用户的话到了再一起交给 AI（只有图时最多等 60 秒），并在第一张图到达时先回一句提示。不修改 Hermes 源码；已在 Hermes 0.22.2 真机测试。MIT。
+- **[beta]** [tenure](https://github.com/otsoa-dubief/tenure) by [otsoa-dubief](https://github.com/otsoa-dubief) - 可撤销的信任层：agent 按动作类别赚取自主权 —— 日常工作默认授信，某类动作首次出错即收回，凭可验证证据重新赚取。每个决定写入签名、哈希链式账本（`hermes tenure verify`），本地改动 24 小时内可撤销。收回/赚回规则来自一项在 OSF 预注册的 agent 自主权研究；无网络、无 LLM 调用，界面支持中文在内 5 种语言，2,600+ 测试。Apache-2.0。
 
 <a id="skill-registries--discovery"></a>
 ### 技能注册表与发现
@@ -375,6 +379,9 @@ Hermes Agent 是由 Nous Research 维护的开源 agent。Awesome Hermes Agent �
 - **[beta]** [ai-usage-monitor](https://github.com/TurkeyGuoba/ai-usage-monitor) by [TurkeyGuoba](https://github.com/TurkeyGuoba) - 本地只读用量监控：按 provider 统计缓存命中率、token 和成本。只读取；不向任何地方发送。MIT。
 - **[beta]** [agent-trust-kit](https://github.com/mauricemohr88-debug/agent-trust-kit) by [mauricemohr88-debug](https://github.com/mauricemohr88-debug) - 有界的 agent 交接：显式文件包和证据回执，让跨越交接边界的内容事后可审计。
 - **[beta]** [SandBase CLI](https://github.com/sandbaseai/cli) by [sandbaseai](https://github.com/sandbaseai) - 跨 2,000+ 模型的 agent 优先 CLI 和 MCP 桥。Apache-2.0。
+- **[beta]** [OrcaReplay](https://github.com/Continuum-AI-Corp/OrcaReplay) by [Continuum-AI-Corp](https://github.com/Continuum-AI-Corp) - 在进程与套接字边界录制 Hermes 的一次运行 —— 模型调用、shell 退出码、每一轮的文件改动、MCP 帧落在同一条时间线上 —— 然后断网逐字重放，并从任意检查点换模型分叉调试。位于 Hermes 之外：不装插件、不写 `~/.hermes`；录制用只为该次运行签发、结束即删的一次性 CA 在本地终结 TLS，凭据转发上游但不写入 trace。Apache-2.0。
+- **[beta]** [deepseek-pricing-panel](https://github.com/ybbms777/deepseek-pricing-panel) by [ybbms777](https://github.com/ybbms777) - DeepSeek API 峰谷计费面板 + Hermes 技能/CLI：判断当前是高峰（全价）还是空闲（半价）、下一次几点切换，支持按退出码（0 = 空闲、3 = 高峰）把批处理推迟到便宜时段。峰谷规则在工作日/周末之上叠加国务院放假安排；单文件 HTML 面板零依赖、离线可用。MIT。
+- **[beta]** [hermes-opencode-quota](https://github.com/1090123627/hermes-opencode-quota) by [1090123627](https://github.com/1090123627) - 给 Hermes TUI（`hermes --tui`）用的单文件零依赖常驻挂件：显示 OpenCode Go 订阅额度的 5h/周/月三个窗口、Zen 预付钱包余额和会话内走势，60 秒自动刷新；刷新失败时保留上次数据并标注新鲜度。放入 `~/.hermes/tui-widgets/` 后 `/widgets-reload` 即装，`/ocbal` 开关。MIT。
 
 <a id="deployment"></a>
 ### 部署
@@ -419,6 +426,9 @@ Hermes Agent 是由 Nous Research 维护的开源 agent。Awesome Hermes Agent �
 - **[beta]** [Agent37 Gateway](https://github.com/agent37-platform/gateway) by [Agent37](https://github.com/agent37-platform) - 位于本地 Hermes worker（stdio 上的 JSONL）或 OpenClaw 后端之前的 Responses 风格 HTTP/SSE API —— 无论后面是哪个 agent，都提供稳定的请求形态和可重连的流回放，外加 OpenAI 兼容的 `/v1/models`。附带 Bruno collection，无需写代码即可调试。MIT。
 - **[beta]** [hermes-connector](https://github.com/CorsenAI/hermes-connector) by [CorsenAI](https://github.com/CorsenAI) - 给予 Hermes 精确会话和用户选定标签页的 Chrome 扩展，本地优先，而非一刀切的浏览器授权。
 - **[beta]** [hermes-proxy](https://github.com/TurkeyGuoba/hermes-proxy) by [TurkeyGuoba](https://github.com/TurkeyGuoba) - 独立于 agent 自身网络路径之外的 mihomo 代理管理。MIT。
+- **[beta]** [Worklittle Jobs MCP](https://github.com/worklittle/jobs-mcp) by [Worklittle](https://github.com/worklittle) - 官方远程 MCP（mcp.worklittle.com）：搜索 750 万+ 职位，支持签证、薪资、距离过滤，在 AI 应用内滑动投递并保存到 Worklittle 账号。MIT。
+- **[beta]** [Aident Loadout](https://github.com/Aident-AI/aident-skill) by [Aident AI](https://github.com/Aident-AI) - 面向 AI agent 的能力层：一次 MCP 配置（streamable HTTP + OAuth）即可接入 1,000+ 应用与 400+ Skills，官方支持 Hermes、Claude Code、Codex、Cursor 等客户端。凭据存于 Aident Vault，动作写入审计。MIT 技能入口。
+- **[experimental]** [Hyperconsciousness](https://github.com/louis030195/hyperconsciousness) by [louis030195](https://github.com/louis030195) - MIT 许可的 Rust 加密知识存储：保存加密、仅追加的记录，提供 CLI 与 MCP 检索接口，可限制 agent 能读取的记录类型、标签和授权有效期。开发者 alpha 阶段，API 仍可能变化；授权限制的是服务端返回内容，不会隔离已能访问本机文件或密钥的进程。
 
 <br>
 
