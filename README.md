@@ -18,6 +18,7 @@
 
 [![Awesome](https://awesome.re/badge.svg)](https://awesome.re)
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg)](LICENSE)
+[![Validate](https://github.com/0xNyk/awesome-hermes-agent/actions/workflows/validate.yml/badge.svg)](https://github.com/0xNyk/awesome-hermes-agent/actions/workflows/validate.yml)
 
 > 翻译自 [awesome-hermes-agent](https://github.com/0xNyk/awesome-hermes-agent) 库，本仓库持续同步更新。
 >
