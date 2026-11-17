@@ -133,6 +133,7 @@ jobs:
 
       - name: OpenAI 翻译
         env:
+          # 配置路径（Secret/Variable 的设置位置与排障）见 .github/AUTOMATION.md
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           set -euo pipefail

@@ -33,6 +33,7 @@ jobs:
       - name: 核验推荐资源并起草条目
         env:
           GH_TOKEN: ${{ github.token }}
+          # OPENAI_API_KEY 配置路径见 .github/AUTOMATION.md
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ISSUE: ${{ github.event.issue.number || inputs.number }}
           TITLE: ${{ github.event.issue.title || '' }}
