@@ -32,11 +32,12 @@ gh secret set OPENAI_API_KEY --repo jefferyjob/awesome-hermes-agent-zh
 
 | 名称 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
-| `OPENAI_MODEL` | **Variable**（明文） | `gpt-5.1` | 翻译/起草所用模型，可在 Variable 里改 |
-| `OPENAI_BASE` | **Variable**（明文） | `https://api.openai.com/v1` | API 地址，可指向任意 **OpenAI 兼容端点**（当前配置：智谱 `https://open.bigmodel.cn/api/v1`）|
-| `OPENAI_MAX_TOKENS` | **Variable**（明文） | `32768` | 单次输出上限，报「输出被截断」时调大 |
+| `OPENAI_MODEL` | **Variable**（明文） | `gpt-5.1` | 翻译/起草所用模型（**当前配置：`deepseek-flash`**，即 DeepSeek-V4.1-Flash）|
+| `OPENAI_BASE` | **Variable**（明文） | `https://api.openai.com/v1` | API 地址，可指向任意 **OpenAI 兼容端点**（**当前配置：`https://api.deepseek.com/v1`**）|
+| `OPENAI_MAX_TOKENS` | **Variable**（明文） | `32768` | 单次输出上限（当前 80000；deepseek-flash 最大可到 393216）|
 
-> **兼容性说明**：脚本统一走 `/chat/completions` 端点，OpenAI 官方与智谱 BigModel 等 OpenAI 兼容实现均可用。智谱有 `/api/v1` 与 `/api/paas/v4` 两个兼容端点（实测均有效），使用智谱时 `OPENAI_MODEL` 填 GLM 系列模型名（如 `glm-5.3-flash`）。
+> **兼容性说明**：脚本统一走 `/chat/completions` 端点，OpenAI 官方、DeepSeek、智谱 BigModel 等 OpenAI 兼容实现均可用。
+> **注意**：GLM Coding Plan（编码套餐）的 key 只能走智谱专用编码端点 `https://open.bigmodel.cn/api/coding/paas/v4`，在通用端点 `/api/v1` 会报 `model_access_denied`（2026-11-17 实测）。
 
 **Web 界面配置路径**：同上页面 → 切到「**Variables**」标签页 → `New repository variable` → Name / Value。
 **命令行**：`gh variable set OPENAI_MODEL --repo jefferyjob/awesome-hermes-agent-zh --body "gpt-5.1"`
@@ -73,8 +74,9 @@ gh secret set OPENAI_API_KEY --repo jefferyjob/awesome-hermes-agent-zh
 
 ## 四、成本与安全备忘
 
-- 翻译成本：全量同步按 token 计费（gpt-5.1 约 $0.3–0.8/次；智谱 GLM-5.3-Flash 价格远低于此）；单条 issue 条目起草约几分钱
+- 翻译成本：全量同步按 token 计费（deepseek-flash 价格低廉，全量同步约几毛钱人民币级）；单条 issue 条目起草约几分钱
 - 所有自动化产物均为草稿 PR / 评论，**合并与收录决定权始终在维护者**
 - Copilot coding agent / code review 不可用原因：账号为 Business 席位（组织 DoushenAI 分配，本人在该组织为普通成员），Business 席位仅覆盖组织仓库，个人仓库无此开关（实测分配报 `Bot does not have access to the repository`）。如需启用：升级个人 Pro+，或将仓库迁入组织并由管理员开启策略
 - `AGENTS.md` 在 `.gitignore` 中被全局忽略规则覆盖，属功能性文件，已用 `git add -f` 强制纳入版本管理
-- **接入背景**（2026-11-17）：原计划用 Copilot coding agent，因上述席位限制改为 OpenAI 兼容 API 直调方案
+- **接入背景**（2026-11-17）：原计划用 Copilot coding agent，因席位限制改为 OpenAI 兼容 API 直调；先后试用智谱 GLM Coding Plan（key 仅限编码端点，通用端点不可用）后，最终采用 **DeepSeek 官方 API**（`deepseek-flash`）
+- **诊断工具**：`api-diagnose.yml` 工作流可列出 key 可用模型清单、实测指定模型（支持临时端点覆盖参数），换模型/换服务商时先跑它
