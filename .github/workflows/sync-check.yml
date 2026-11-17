@@ -70,16 +70,18 @@ jobs:
             exit 0
           fi
 
-          OPEN_COUNT=$(gh issue list --label sync --state open --limit 1 --json number --jq 'length')
-          if [ "$OPEN_COUNT" != "0" ]; then
-            echo "已存在待同步 issue，跳过创建"
+          OPEN_NUM=$(gh issue list --label sync --state open --limit 1 --json number --jq '.[0].number')
+          if [ -n "$OPEN_NUM" ]; then
+            echo "已存在待同步 issue #$OPEN_NUM，复用它重试翻译"
+            echo "needs_sync=true" >> "$GITHUB_OUTPUT"
+            echo "issue_number=${OPEN_NUM}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           echo "needs_sync=true" >> "$GITHUB_OUTPUT"
 
       - name: 创建同步任务 issue
         id: create_issue
-        if: steps.check.outputs.needs_sync == 'true'
+        if: steps.check.outputs.needs_sync == 'true' && steps.check.outputs.issue_number == ''
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ steps.check.outputs.upstream_head }}
