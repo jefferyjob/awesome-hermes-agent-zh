@@ -1,0 +1,51 @@
+name: API 诊断
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_model:
+        description: "可选：额外实测一个模型 ID（发 1 次极小请求）"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 列出当前 key 可用的模型
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE: ${{ vars.OPENAI_BASE }}
+        run: |
+          set -euo pipefail
+          BASE="${OPENAI_BASE:-https://api.openai.com/v1}"
+          echo "端点: ${BASE}"
+          echo "=== GET /models ==="
+          CODE=$(curl -s -m 30 -w "\n%{http_code}" "${BASE%/}/models" \
+            -H "Authorization: Bearer ${OPENAI_API_KEY}" -o /tmp/models.json)
+          echo "HTTP ${CODE}"
+          head -c 3000 /tmp/models.json; echo
+
+      - name: 实测指定模型
+        if: inputs.test_model != ''
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE: ${{ vars.OPENAI_BASE }}
+          TEST_MODEL: ${{ inputs.test_model }}
+        run: |
+          set -euo pipefail
+          BASE="${OPENAI_BASE:-https://api.openai.com/v1}"
+          echo "=== POST /chat/completions (model=${TEST_MODEL}) ==="
+          CODE=$(curl -s -m 60 -w "\n%{http_code}" "${BASE%/}/chat/completions" \
+            -H "Authorization: Bearer ${OPENAI_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"model\":\"${TEST_MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"回复:ok\"}],\"max_tokens\":8}" \
+            -o /tmp/test.json)
+          echo "HTTP ${CODE}"
+          head -c 1500 /tmp/test.json; echo
