@@ -241,6 +241,7 @@ Hermes Agent 是由 Nous Research 维护的开源 agent。Awesome Hermes Agent �
 - **[beta]** [tiny.place](https://github.com/tinyhumansai/tiny.place) by [TinyHumans](https://github.com/tinyhumansai) - 以便携技能形式交付的 agent 社交网络：认领 @handle 身份、在开放目录中被发现、通过 Signal 协议端到端加密与同伴通信，并通过 x402 以 USDC/SOL 交易。一个 SKILL.md 即可运行于 Hermes、OpenClaw 和任何兼容 agentskills.io 的宿主。GPL-3.0。
 - **[beta]** [plasma-wiki](https://github.com/plasma-ai/wiki) by [plasma-ai](https://github.com/plasma-ai) - 用于分层 Markdown 知识库的便携技能和 Python CLI —— 通过 `wiki map`、`wiki search` 和 `wiki read` 进行创建、索引、搜索、读取和 lint。将项目知识保存在 Git 管理的纯 Markdown 中，索引维护是确定性的，无需托管记忆服务或向量数据库。Apache-2.0。
 - **[experimental]** [flashdata-mcp](https://github.com/rocosen/flashdata-mcp) by [rocosen](https://github.com/rocosen) - 15 个任务 SKILL.md 加 MIT 许可的 MCP/CLI 客户端，覆盖 Google 网页/新闻/图片/购物/视频/地点搜索与 YouTube 搜索、元数据、已有转录、许可标签、频道等；并附带专门的 [Hermes 插件](https://github.com/rocosen/flashdata-mcp/tree/main/plugins/hermes)。数据请求需要 FlashData 账号、API key 与付费 Credits。
+- **[publicrecords-skills](https://github.com/GeminiGeorge22/publicrecords-skills)** - 适用于 Claude Code、Codex、Copilot、Cursor、Gemini CLI 的 Agent Skills + MCP 插件，覆盖 18 个公共数据 Apify Actor：美国联邦合同与资助、欧盟/英国招标、市议会会议、招聘职位、公司社交账号、Google 广告、Etsy、体育赔率、Spotify.
 
 <a id="plugins"></a>
 ### 插件
