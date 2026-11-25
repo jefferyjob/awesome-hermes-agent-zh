@@ -383,6 +383,7 @@ Hermes Agent 是由 Nous Research 维护的开源 agent。Awesome Hermes Agent �
 - **[beta]** [OrcaReplay](https://github.com/Continuum-AI-Corp/OrcaReplay) by [Continuum-AI-Corp](https://github.com/Continuum-AI-Corp) - 在进程与套接字边界录制 Hermes 的一次运行 —— 模型调用、shell 退出码、每一轮的文件改动、MCP 帧落在同一条时间线上 —— 然后断网逐字重放，并从任意检查点换模型分叉调试。位于 Hermes 之外：不装插件、不写 `~/.hermes`；录制用只为该次运行签发、结束即删的一次性 CA 在本地终结 TLS，凭据转发上游但不写入 trace。Apache-2.0。
 - **[beta]** [deepseek-pricing-panel](https://github.com/ybbms777/deepseek-pricing-panel) by [ybbms777](https://github.com/ybbms777) - DeepSeek API 峰谷计费面板 + Hermes 技能/CLI：判断当前是高峰（全价）还是空闲（半价）、下一次几点切换，支持按退出码（0 = 空闲、3 = 高峰）把批处理推迟到便宜时段。峰谷规则在工作日/周末之上叠加国务院放假安排；单文件 HTML 面板零依赖、离线可用。MIT。
 - **[beta]** [hermes-opencode-quota](https://github.com/1090123627/hermes-opencode-quota) by [1090123627](https://github.com/1090123627) - 给 Hermes TUI（`hermes --tui`）用的单文件零依赖常驻挂件：显示 OpenCode Go 订阅额度的 5h/周/月三个窗口、Zen 预付钱包余额和会话内走势，60 秒自动刷新；刷新失败时保留上次数据并标注新鲜度。放入 `~/.hermes/tui-widgets/` 后 `/widgets-reload` 即装，`/ocbal` 开关。MIT。
+- **[experimental]** [FlashData MCP](https://github.com/flashdatadev/flashdata-mcp) by [flashdatadev](https://github.com/flashdatadev) - 提供 Google 搜索与 YouTube 数据、字幕和下载能力的 MCP 服务器，支持远程托管与本地 stdio 接入，适合需要搜索和视频数据工具的 Hermes agent 用户。免费连接与账户检查，但 Google/YouTube 数据调用会消耗 FlashData Credits，使用前需留意配额与付费边界。
 
 <a id="deployment"></a>
 ### 部署

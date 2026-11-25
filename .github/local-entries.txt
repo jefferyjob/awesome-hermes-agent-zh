@@ -9,3 +9,4 @@ otsoa-dubief/tenure
 rocosen/flashdata-mcp
 worklittle/jobs-mcp
 ybbms777/deepseek-pricing-panel
+flashdatadev/flashdata-mcp
