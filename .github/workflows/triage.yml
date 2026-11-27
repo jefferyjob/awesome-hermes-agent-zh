@@ -3,7 +3,10 @@ name: 自动核验 issue 与 PR
 on:
   issues:
     types: [opened, reopened]
-  pull_request:
+  # 注意：必须用 pull_request_target（以 main 上的 workflow + base 分支代码运行），
+  # 否则 fork PR 会被首次贡献者审批门拦截（action_required），且 GITHUB_TOKEN 只读、无 secrets。
+  # 安全红线见 lint-pr job 内注释：PR 内容只作为数据，绝不 checkout / 执行 PR 分支代码。
+  pull_request_target:
     types: [opened, reopened]
   workflow_dispatch:
     inputs:
@@ -121,39 +124,178 @@ jobs:
           gh issue close "$ISSUE" --reason "not planned" || true
 
   lint-pr:
-    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.kind == 'pr')
+    if: github.event_name == 'pull_request_target' || (github.event_name == 'workflow_dispatch' && inputs.kind == 'pr')
+    concurrency:
+      group: triage-pr-${{ github.event.pull_request.number || inputs.number }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     steps:
+      # pull_request_target 事件下默认 checkout 的是 base 分支（可信代码）。
+      # 安全红线：本 job 的任何步骤都不得 checkout / 执行 PR 分支的代码；
+      # PR 内容（diff、正文）只作为数据传给校验与评审脚本。
       - uses: actions/checkout@v4
 
-      - name: 检查 PR 条目格式与新增仓库
+      - name: 硬门槛核验 + AI 评审 + 自动处置
         env:
           GH_TOKEN: ${{ github.token }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE: ${{ vars.OPENAI_BASE }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          OPENAI_MAX_TOKENS: ${{ vars.OPENAI_MAX_TOKENS }}
+          AUTO_MERGE_DAILY_CAP: ${{ vars.AUTO_MERGE_DAILY_CAP }}
           PR: ${{ github.event.pull_request.number || inputs.number }}
+          TITLE: ${{ github.event.pull_request.title || '' }}
+          AUTHOR: ${{ github.event.pull_request.user.login || '' }}
         run: |
           set -euo pipefail
           gh label create "format:ok" --color 0E8A16 --description "PR 格式核验通过" 2>/dev/null || true
           gh label create "format:issues" --color D93F0B --description "PR 格式核验发现问题" 2>/dev/null || true
+          gh label create "triage:fail" --color D93F0B --description "自动核验未通过" 2>/dev/null || true
+          gh label create "needs-human" --color FBCA04 --description "需人工复核" 2>/dev/null || true
 
           FILES="$(gh pr view "$PR" --json files --jq '.files[].path' | tr '\n' ' ')"
           echo "变更文件: $FILES"
-
           gh pr diff "$PR" > /tmp/pr.diff
-          if python3 .github/scripts/lint_pr_entries.py /tmp/pr.diff README.md "$FILES" > /tmp/report.md; then
-            VERDICT="ok"
-          else
-            VERDICT="issues"
+          gh pr view "$PR" --json title,body --jq '"\(.title)\n\n\(.body // "")"' > /tmp/pr.txt
+
+          # ---------- 第 0 层：确定性硬门槛（不信任 PR 文本，也不信任 AI） ----------
+          if ! python3 .github/scripts/lint_pr_entries.py /tmp/pr.diff README.md "$FILES" > /tmp/report.md; then
+            {
+              echo "### 🤖 PR 自动核验"
+              echo
+              cat /tmp/report.md
+              echo
+              echo "---"
+              echo "❌ 未通过格式硬门槛（只允许改动 README.md 并追加/修正符合格式的条目行）。请修正后重新打开 PR，机器人会自动重新评审。"
+            } > /tmp/comment.md
+            gh pr comment "$PR" --body-file /tmp/comment.md
+            gh pr edit "$PR" --add-label "format:issues" || true
+            gh pr close "$PR" || true
+            exit 0
           fi
 
-          {
-            echo "### 🤖 PR 自动核验"
-            echo
-            cat /tmp/report.md
-          } > /tmp/comment.md
-          gh pr comment "$PR" --body-file /tmp/comment.md
+          GATE="$(python3 .github/scripts/gate_pr_added.py --json /tmp/gate.json /tmp/pr.diff README.md)" && GATE_RC=0 || GATE_RC=$?
+          echo "硬门槛结果: rc=$GATE_RC"
+          if [ "$GATE_RC" -eq 1 ]; then
+            {
+              echo "### 🤖 PR 自动核验"
+              echo
+              cat /tmp/report.md
+              echo
+              echo "---"
+              echo "❌ 未通过自动合并硬门槛："
+              echo
+              echo "$GATE"
+              echo
+              echo "请修正后重新打开 PR，机器人会自动重新评审。"
+            } > /tmp/comment.md
+            gh pr comment "$PR" --body-file /tmp/comment.md
+            gh pr edit "$PR" --add-label "format:issues" || true
+            gh pr close "$PR" || true
+            exit 0
+          fi
+          if [ "$GATE_RC" -ne 0 ]; then
+            {
+              echo "### 🤖 PR 自动核验"
+              echo
+              cat /tmp/report.md
+              echo
+              echo "---"
+              echo "⚠️ 满足基础格式要求，但触发了人工复核规则："
+              echo
+              echo "$GATE"
+            } > /tmp/comment.md
+            gh pr comment "$PR" --body-file /tmp/comment.md
+            gh pr edit "$PR" --add-label "needs-human" || true
+            exit 0
+          fi
 
-          if [ "$VERDICT" = "ok" ]; then
-            gh pr edit "$PR" --add-label "format:ok"
+          # ---------- 第 1 层：AI 对照起草 + 内容评审 ----------
+          FIRST_REPO="$(python3 -I -c "import json;d=json.load(open('/tmp/gate.json'));print(d['repos'][0] if d['repos'] else '')")"
+          DRAFT_FILE=""
+          if [ -n "$FIRST_REPO" ]; then
+            if python3 .github/scripts/draft_entry.py --repo "$FIRST_REPO" --issue-title "$TITLE" --out /tmp/draft.json; then
+              DRAFT_FILE="/tmp/draft.json"
+            fi
+          fi
+
+          if ! python3 .github/scripts/review_pr.py --pr-title "$TITLE" --author "$AUTHOR" \
+              --body-file /tmp/pr.txt --diff-file /tmp/pr.diff --lint-report-file /tmp/report.md \
+              --draft-file "$DRAFT_FILE" --repo "$FIRST_REPO" --out /tmp/verdict.json; then
+            {
+              echo "### 🤖 PR 自动核验"
+              echo
+              cat /tmp/report.md
+              echo
+              echo "---"
+              echo "⚠️ AI 评审调用失败，已标记 needs-human，请维护者人工复核。"
+            } > /tmp/comment.md
+            gh pr comment "$PR" --body-file /tmp/comment.md
+            gh pr edit "$PR" --add-label "needs-human" || true
+            exit 0
+          fi
+
+          VERDICT="$(python3 -I -c "import json;print(json.load(open('/tmp/verdict.json'))['verdict'])")"
+          echo "AI 评审: $VERDICT"
+
+          python3 -I -c "import json; report=open('/tmp/report.md',encoding='utf-8').read().strip(); reason=json.load(open('/tmp/verdict.json',encoding='utf-8'))['reason'].strip(); print('### 🤖 PR 自动核验'); print(); print(report); print(); print('---'); print(); print(reason)" > /tmp/base.md
+
+          # ---------- 第 2 层：按结论处置（含每日自动合并上限与草稿保护） ----------
+          CAP="${AUTO_MERGE_DAILY_CAP:-10}"
+          TODAY="$(date -u +%Y-%m-%dT00:00:00Z)"
+          MERGED_TODAY="$(gh pr list --state merged --limit 50 --json mergedAt | jq --arg t "$TODAY" '[.[] | select(.mergedAt >= $t)] | length' 2>/dev/null || echo 0)"
+          echo "今日已自动/人工合并 PR 数: $MERGED_TODAY（上限 $CAP）"
+          IS_DRAFT="$(gh pr view "$PR" --json isDraft --jq .isDraft 2>/dev/null || echo false)"
+
+          if [ "$VERDICT" = "pass" ] && [ "$IS_DRAFT" != "true" ] && [ "${MERGED_TODAY:-0}" -lt "$CAP" ]; then
+            if gh pr merge "$PR" --squash; then
+              MSHA="$(gh pr view "$PR" --json mergeCommit --jq .mergeCommit.oid 2>/dev/null || true)"
+              EXTRA=""
+              [ -n "$MSHA" ] && EXTRA="（commit ${MSHA:0:7}）"
+              {
+                cat /tmp/base.md
+                echo
+                echo "---"
+                echo "✅ AI 评审通过，已自动 squash 合并${EXTRA}。如对条目内容有异议，直接修改对应行即可。"
+              } > /tmp/final.md
+              gh pr comment "$PR" --body-file /tmp/final.md
+              gh pr edit "$PR" --add-label "format:ok" || true
+            else
+              {
+                cat /tmp/base.md
+                echo
+                echo "---"
+                echo "⚠️ 评审通过但自动合并失败（可能存在冲突或分支状态变化），已标记 needs-human 转人工。"
+              } > /tmp/final.md
+              gh pr comment "$PR" --body-file /tmp/final.md
+              gh pr edit "$PR" --add-label "needs-human" || true
+            fi
+          elif [ "$VERDICT" = "pass" ]; then
+            {
+              cat /tmp/base.md
+              echo
+              echo "---"
+              echo "⚠️ 评审通过，但已达每日自动合并上限（${CAP}）或 PR 为草稿，转人工处理。"
+            } > /tmp/final.md
+            gh pr comment "$PR" --body-file /tmp/final.md
+            gh pr edit "$PR" --add-label "needs-human" || true
+          elif [ "$VERDICT" = "fail" ]; then
+            {
+              cat /tmp/base.md
+              echo
+              echo "---"
+              echo "❌ AI 评审未通过，已自动关闭。如有异议可重开 PR 并补充说明，机器人会重新评审。"
+            } > /tmp/final.md
+            gh pr comment "$PR" --body-file /tmp/final.md
+            gh pr edit "$PR" --add-label "triage:fail" || true
+            gh pr close "$PR" || true
           else
-            gh pr edit "$PR" --add-label "format:issues"
+            {
+              cat /tmp/base.md
+              echo
+              echo "---"
+              echo "⚠️ AI 评审结论为「不确定」，保持打开并标记 needs-human，等待维护者复核。"
+            } > /tmp/final.md
+            gh pr comment "$PR" --body-file /tmp/final.md
+            gh pr edit "$PR" --add-label "needs-human" || true
           fi
